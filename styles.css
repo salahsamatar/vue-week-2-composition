@@ -1,0 +1,20 @@
+#student-table {
+    max-height: 400px;
+    overflow: scroll;
+}
+
+th, tr {
+    width: 25%;
+}
+
+/* Applied to present students - gray and italic */
+.present {
+    color: gray;
+    font-style: italic;
+}
+
+/* Applied to absent students - black and bold */
+.absent {
+    color: black;
+    font-weight: bold;
+}

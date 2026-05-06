@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Student Sign In</title>
+    <!-- Vue 3 - gives us access to the Vue object below -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="styles.css" type="text/css">
+</head>
+
+<body>
+    <!-- Vue controls everything inside this div -->
+    <div id="app">
+
+        <div id="new-student-form-errors" class="m-2">
+            <!-- v-if only shows this box when there are errors in the array -->
+            <div class="alert alert-danger" v-if="formErrors.length > 0">
+                <!-- v-for loops through formErrors and makes one <li> per message -->
+                <li v-for="error in formErrors" v-bind:key="error">{{ error }}</li>
+            </div>
+        </div>
+
+        <div id="new-student-form" class="card add-student m-2 p-2">
+            <h4 class="card-title">Add new student</h4>
+
+            <div class="form-group mb-3">
+                <label for="name">Name</label>
+                <!-- v-model.trim keeps this input in sync with newStudentName, trims whitespace -->
+                <input id="name" class="form-control" v-model.trim="newStudentName">
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="starID">Star ID</label>
+                <!-- so this does the same two-way binding for the StarID field -->
+                <input id="starID" class="form-control" v-model.trim="newStarID">
+            </div>
+
+            <!-- v-on:click calls addStudent when the button is clicked -->
+            <button class="btn btn-primary" v-on:click="addStudent">Add</button>
+        </div>
+
+        <div id="student-list-table" class="card m-2 p-2">
+            <h4 class="card-title">Student List</h4>
+            <div id="student-table">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>StarID</th>
+                            <th>Present?</th>
+                            <th>Delete</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <!-- v-for creates one row per student, v-bind:key helps Vue track each row -->
+                        <!-- v-bind:class applies .present or .absent CSS class based on student.present -->
+                        <tr v-for="student in studentList"
+                            v-bind:key="student.starID"
+                            v-bind:class="student.present ? 'present' : 'absent'">
+
+                            <td>{{ student.name }}</td>
+                            <td>{{ student.starID }}</td>
+
+                            <td>
+                                <!-- v-model binds checkbox to student.present - checking it sets present to true -->
+                                <!-- v-on:change fires arrivedOrLeft so we know who just changed -->
+                                <input type="checkbox"
+                                       v-model="student.present"
+                                       v-on:change="arrivedOrLeft(student)">
+
+                                <!-- v-if/v-else shows one or the other, never both -->
+                                <span class="mx-3" v-if="student.present">Here!</span>
+                                <span class="mx-3" v-else>Not present</span>
+                            </td>
+
+                            <td>
+                                <!-- passes the student object so deleteStudent knows which one to remove -->
+                                <button class="btn btn-danger btn-sm" v-on:click="deleteStudent(student)">
+                                    🗑 Delete
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="welcome-or-goodbye-message" class="m-2">
+            <!-- this only shows when mostRecentStudent has a name -->
+            <div class="alert alert-success" v-if="mostRecentStudent.name">
+                <!-- so this shows Welcome if present, Goodbye if not -->
+                <span v-if="mostRecentStudent.present">Welcome, {{ mostRecentStudent.name }}!</span>
+                <span v-else>Goodbye, {{ mostRecentStudent.name }}!</span>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // pull createApp and ref out of Vue
+        // ref() makes a reactive value - when it changes, Vue updates the page automatically
+        const { createApp, ref } = Vue
+
+        createApp({
+            setup() {
+
+                // these two hold what the user types in the form inputs
+                const newStudentName = ref('')
+                const newStarID = ref('')
+
+                // this is the list of students - each has name, starID, and present
+                const studentList = ref([
+                    { name: "A. Student", starID: "aa1234aa", present: false },
+                    { name: "B. Student", starID: "bb1234bb", present: false }
+                ])
+
+                // this holds validation error messages to show in the red box
+                const formErrors = ref([])
+
+                // this holds whichever student most recently checked in or out
+                const mostRecentStudent = ref({})
+
+
+                const addStudent = () => {
+                    // clear old errors first so we start fresh
+                    formErrors.value = []
+
+                    // empty string is falsy in JS, so this catches blank fields
+                    if (!newStudentName.value) {
+                        formErrors.value.push('Student name must be entered')
+                    }
+                    if (!newStarID.value) {
+                        formErrors.value.push('StarID must be entered')
+                    }
+
+                    // only add if no errors were found
+                    if (formErrors.value.length == 0) {
+                        let student = {
+                            name: newStudentName.value,
+                            starID: newStarID.value,
+                            present: false
+                        }
+                        // push adds to the array - Vue re-renders the table automatically
+                        studentList.value.push(student)
+
+                        // setting .value = '' clears the input fields because v-model is two-way
+                        newStudentName.value = ''
+                        newStarID.value = ''
+                    }
+                }
+
+                // this runs when a checkbox is toggled - stores that student for the banner
+                const arrivedOrLeft = (student) => {
+                    mostRecentStudent.value = student
+                }
+
+                // this removes a student from the list by finding their index and splicing them out
+                const deleteStudent = (student) => {
+                    const index = studentList.value.findIndex(s => s.starID === student.starID)
+                    if (index !== -1) {
+                        studentList.value.splice(index, 1)
+                    }
+                    // clear the banner if we just deleted the student shown there
+                    if (mostRecentStudent.value.starID === student.starID) {
+                        mostRecentStudent.value = {}
+                    }
+                }
+
+                // everything returned here is available in the HTML template
+                return {
+                    newStudentName,
+                    newStarID,
+                    studentList,
+                    formErrors,
+                    mostRecentStudent,
+                    addStudent,
+                    arrivedOrLeft,
+                    deleteStudent
+                }
+            }
+        }).mount('#app')  // connects Vue to the #app div
+    </script>
+
+</body>
+</html>
